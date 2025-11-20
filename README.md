@@ -1,44 +1,76 @@
-# Base Fastify Backend with Prisma ORM
+# Base Fastify Backend with Prisma ORM & RBAC
 
-Struktur backend Node.js yang bersih dan terorganisir menggunakan Fastify framework + Prisma ORM dengan MySQL database.
+Struktur backend Node.js yang bersih dan terorganisir menggunakan Fastify framework + Prisma ORM dengan MySQL database dan RBAC (Role-Based Access Control) system.
 
 ## 📁 Struktur Folder
 
 ```
 baseFastify/
 ├── prisma/
-│   └── schema.prisma     # Database schema definition
+│   ├── schema.prisma          # Database schema definition
+│   ├── cli.js                 # Prisma CLI wrapper (loads database-url.js)
+│   ├── database-url.js        # Build DATABASE_URL from environment variables
+│   ├── migrations/            # Database migrations (auto-generated)
+│   │   ├── 20250119_init/     # Initial migration
+│   │   │   ├── migration.sql
+│   │   │   ├── rollback.sql
+│   │   │   └── README.md
+│   │   ├── README.md
+│   │   └── run-migration.sh
+│   ├── seed/                  # Database seeders
+│   │   ├── index.js           # Run all seeds
+│   │   ├── permissions.seed.js
+│   │   ├── roles.seed.js
+│   │   └── user.seed.js
+│   └── helpers/               # Prisma helper functions
+│       └── rbac.js            # RBAC helper functions
 ├── src/
-│   ├── config/           # Konfigurasi aplikasi
-│   │   ├── config.js     # File konfigurasi utama
-│   │   └── database.js   # Prisma client instance
-│   ├── routes/           # Route definitions
-│   │   ├── index.js      # Route registry
-│   │   ├── health.routes.js
-│   │   ├── example.routes.js
-│   │   ├── user.routes.js    # User CRUD endpoints
-│   │   └── post.routes.js    # Post CRUD endpoints
-│   ├── plugins/          # Fastify plugins
-│   │   ├── index.js      # Plugin registry
-│   │   └── prisma.plugin.js  # Prisma database plugin
-│   ├── services/         # Business logic layer
-│   │   ├── example.service.js
-│   │   ├── user.service.js   # User business logic
-│   │   └── post.service.js   # Post business logic
-│   ├── models/           # Data models (optional with Prisma)
-│   │   └── example.model.js
-│   ├── middlewares/      # Custom middlewares
-│   │   ├── auth.middleware.js
-│   │   └── error.middleware.js
-│   ├── utils/            # Utility functions
-│   │   ├── response.util.js
-│   │   └── logger.util.js
-│   └── server.js         # Main server file
-├── .env                  # Environment variables
-├── .env.example          # Environment variables template
-├── .gitignore
+│   ├── config/                # Application configuration
+│   │   ├── env.js             # Environment variables config
+│   │   └── prisma.js          # Prisma client instance
+│   ├── middleware/            # Custom middlewares
+│   │   ├── auth.middleware.js # JWT authentication middleware
+│   │   └── rbac.middleware.js # RBAC permission middleware
+│   ├── modules/               # Feature modules
+│   │   ├── auth/              # Authentication module
+│   │   │   ├── auth.controller.js
+│   │   │   ├── auth.service.js
+│   │   │   ├── auth.route.js
+│   │   │   └── auth.schema.js
+│   │   ├── user/              # User management module
+│   │   │   ├── user.controller.js
+│   │   │   ├── user.service.js
+│   │   │   ├── user.route.js
+│   │   │   ├── user.schema.js
+│   │   │   └── user.model.js
+│   │   ├── role/              # Role management module
+│   │   │   ├── role.controller.js
+│   │   │   ├── role.service.js
+│   │   │   ├── rbac.service.js
+│   │   │   ├── role.route.js
+│   │   │   ├── role.schema.js
+│   │   │   └── role.model.js
+│   │   └── permission/        # Permission management module
+│   │       ├── permission.controller.js
+│   │       ├── permission.service.js
+│   │       ├── permission.route.js
+│   │       ├── permission.schema.js
+│   │       └── permission.model.js
+│   ├── plugins/               # Fastify plugins
+│   │   ├── index.js           # Plugin registry
+│   │   ├── cors.js            # CORS plugin
+│   │   ├── jwt.js             # JWT authentication plugin
+│   │   └── swagger.js         # API documentation plugin
+│   ├── utils/                 # Utility functions
+│   │   ├── logger.js          # Logger utility
+│   │   ├── response.js        # Response formatter
+│   │   └── hash.js            # Password hashing
+│   ├── app.js                 # Fastify app setup
+│   ├── routes.js              # Route registry
+│   └── server.js              # Main server file
+├── .env                       # Environment variables (create from .env.example)
+├── .env.example               # Environment variables template
 ├── package.json
-├── prisma.config.ts      # Prisma config to load .env
 └── README.md
 ```
 
@@ -46,8 +78,8 @@ baseFastify/
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
-- MySQL Server (v5.7 or higher / v8.0 recommended)
+- Node.js (v18 or higher)
+- MySQL Server (v8.0 recommended)
 - npm or yarn
 
 ### Installation
@@ -64,22 +96,54 @@ npm install
 cp .env.example .env
 ```
 
-4. Edit file `.env` dan sesuaikan DATABASE_URL:
+4. Edit file `.env` dan sesuaikan konfigurasi database:
 ```env
-DATABASE_URL="mysql://USER:PASSWORD@HOST:PORT/DATABASE"
-# Contoh:
-# DATABASE_URL="mysql://root:password@localhost:3306/basefastify"
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=base_fastify
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=7d
+
+# Server Configuration
+NODE_ENV=development
+PORT=3000
+HOST=0.0.0.0
+
+# CORS Configuration
+CORS_ORIGIN=*
+
+# Logging
+LOG_LEVEL=info
 ```
+
+**Note:** `DATABASE_URL` akan dibuat otomatis dari `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, dan `DB_NAME` oleh `prisma/database-url.js`.
 
 5. Generate Prisma Client:
 ```bash
-npx prisma generate
+npm run prisma:generate
 ```
 
-6. Jalankan migration untuk create tables:
+6. Run migration untuk create tables:
 ```bash
-npx prisma migrate dev --name init
+npm run prisma:migrate
 ```
+
+7. Seed database (permissions, roles, admin user):
+```bash
+npm run prisma:seed
+```
+
+Ini akan membuat:
+- Default permissions (users.*, roles.*, permissions.*)
+- Default roles (admin, editor, viewer)
+- Default admin user:
+  - Email: `admin@example.com`
+  - Password: `admin123`
 
 ### Running the Server
 
@@ -97,65 +161,226 @@ Server akan berjalan di `http://localhost:3000` (default)
 
 ## 📝 API Endpoints
 
-### Health Check
-- `GET /health` - Simple health check
-- `GET /health/detailed` - Detailed health check
+### Public Endpoints
 
-### Example API (Static Data)
-- `GET /api/examples` - Get all examples
-- `GET /api/examples/:id` - Get example by ID
-- `POST /api/examples` - Create new example
-- `PUT /api/examples/:id` - Update example
-- `DELETE /api/examples/:id` - Delete example
+#### Authentication
+- `POST /api/auth/login` - Login user
+  - Body: `{ email, password }`
+  - Returns: JWT token + user data
 
-### User API (Database - Prisma)
+- `POST /api/auth/register` - Register new user
+  - Body: `{ email, name, password }`
+  - Returns: User data
+
+### Protected Endpoints
+
+**Note:** Semua endpoint di bawah memerlukan JWT token di header:
+```
+Authorization: Bearer <your_jwt_token>
+```
+
+#### Users
 - `GET /api/users` - Get all users (with pagination)
   - Query params: `page`, `limit`, `includeInactive`
-- `GET /api/users/:id` - Get user by ID (with posts)
-- `POST /api/users` - Create new user
-  - Body: `{ email, name, password, role? }`
-- `PUT /api/users/:id` - Update user
-  - Body: `{ name?, role?, isActive? }`
-- `DELETE /api/users/:id` - Soft delete user
+  - Permission: `users.list`
 
-### Post API (Database - Prisma)
-- `GET /api/posts` - Get all posts (with pagination)
-  - Query params: `page`, `limit`, `published`, `authorId`
-- `GET /api/posts/:id` - Get post by ID (with author)
-- `POST /api/posts` - Create new post
-  - Body: `{ title, content?, authorId, published? }`
-- `PUT /api/posts/:id` - Update post
-  - Body: `{ title?, content?, published? }`
-- `DELETE /api/posts/:id` - Delete post
-- `PATCH /api/posts/:id/publish` - Toggle publish status
+- `GET /api/users/:id` - Get user by ID
+  - Permission: `users.read`
+
+- `POST /api/users` - Create new user
+  - Body: `{ email, name, password }`
+  - Permission: `users.create`
+
+- `PUT /api/users/:id` - Update user
+  - Body: `{ name?, email?, isActive? }`
+  - Permission: `users.update`
+
+- `DELETE /api/users/:id` - Delete user (soft delete)
+  - Permission: `users.delete`
+
+#### Roles
+- `GET /api/roles` - Get all roles
+  - Permission: `roles.list`
+
+- `GET /api/roles/:id` - Get role by ID with permissions
+  - Permission: `roles.read`
+
+- `POST /api/roles` - Create new role
+  - Body: `{ name, description, permissionIds? }`
+  - Permission: `roles.create`
+
+- `PUT /api/roles/:id` - Update role
+  - Body: `{ name?, description?, permissionIds? }`
+  - Permission: `roles.update`
+
+- `DELETE /api/roles/:id` - Delete role
+  - Permission: `roles.delete`
+
+- `POST /api/roles/:id/assign-permission` - Assign permission to role
+  - Body: `{ permissionId }`
+  - Permission: `roles.manage`
+
+- `POST /api/roles/:id/remove-permission` - Remove permission from role
+  - Body: `{ permissionId }`
+  - Permission: `roles.manage`
+
+- `POST /api/roles/:id/assign-user` - Assign role to user
+  - Body: `{ userId }`
+  - Permission: `roles.manage`
+
+- `POST /api/roles/:id/remove-user` - Remove role from user
+  - Body: `{ userId }`
+  - Permission: `roles.manage`
+
+#### Permissions
+- `GET /api/permissions` - Get all permissions
+  - Permission: `permissions.list`
+
+- `GET /api/permissions/:id` - Get permission by ID
+  - Permission: `permissions.read`
+
+- `POST /api/permissions` - Create new permission
+  - Body: `{ name, resource, action, description? }`
+  - Permission: `permissions.create`
+
+- `PUT /api/permissions/:id` - Update permission
+  - Body: `{ name?, resource?, action?, description? }`
+  - Permission: `permissions.update`
+
+- `DELETE /api/permissions/:id` - Delete permission
+  - Permission: `permissions.delete`
+
+### Health Check
+- `GET /` - API information
+- `GET /health` - Health check endpoint
+
+## 🔐 Authentication & Authorization
+
+### JWT Authentication
+
+1. Login untuk mendapatkan token:
+```bash
+POST /api/auth/login
+{
+  "email": "admin@example.com",
+  "password": "admin123"
+}
+```
+
+2. Gunakan token di header request:
+```
+Authorization: Bearer <your_jwt_token>
+```
+
+### RBAC (Role-Based Access Control)
+
+System ini menggunakan RBAC dengan struktur:
+- **Users** dapat memiliki multiple **Roles**
+- **Roles** memiliki multiple **Permissions**
+- **Permissions** menggunakan format: `resource.action` (e.g., `users.create`, `roles.delete`)
+
+#### Default Roles & Permissions
+
+**Admin Role:**
+- Semua permissions (full access)
+
+**Editor Role:**
+- `*.read`, `*.update`, `*.list` permissions
+
+**Viewer Role:**
+- `*.read`, `*.list` permissions
+
+#### Using RBAC Middleware
+
+```javascript
+// Require single permission
+fastify.get('/protected', {
+  preHandler: [authenticate, requirePermission('users.read')]
+}, handler);
+
+// Require any of permissions
+fastify.post('/create', {
+  preHandler: [authenticate, requireAnyPermission(['users.create', 'users.manage'])]
+}, handler);
+
+// Require all permissions
+fastify.delete('/delete', {
+  preHandler: [authenticate, requireAllPermissions(['users.delete', 'users.manage'])]
+}, handler);
+
+// Require role
+fastify.get('/admin-only', {
+  preHandler: [authenticate, requireRole('admin')]
+}, handler);
+```
 
 ## 🗄️ Database & Prisma
+
+### Database Models
+
+#### User
+- `id` - UUID primary key
+- `email` - Unique, required
+- `name` - Optional
+- `password` - Hashed password (required)
+- `isActive` - Default: true (for soft delete)
+- `createdAt`, `updatedAt` - Auto timestamps
+- Relations: `userRoles` → Role
+
+#### Role
+- `id` - UUID primary key
+- `name` - Unique (e.g., "admin", "editor")
+- `description` - Optional
+- `isActive` - Default: true
+- `createdAt`, `updatedAt` - Auto timestamps
+- Relations: `userRoles` → User, `rolePermissions` → Permission
+
+#### Permission
+- `id` - UUID primary key
+- `name` - Unique (e.g., "users.create")
+- `resource` - Resource type (e.g., "users", "roles")
+- `action` - Action type (e.g., "create", "read", "update", "delete")
+- `description` - Optional
+- `createdAt`, `updatedAt` - Auto timestamps
+- Relations: `rolePermissions` → Role
+
+#### Junction Tables
+- **user_roles**: Links users to roles (many-to-many)
+- **role_permissions**: Links roles to permissions (many-to-many)
 
 ### Prisma Commands
 
 **Generate Prisma Client:**
 ```bash
-npx prisma generate
+npm run prisma:generate
 ```
 
 **Create migration:**
 ```bash
-npx prisma migrate dev --name migration_name
+npm run prisma:migrate
+# Prisma akan auto-detect perubahan schema
 ```
 
 **Apply migrations (production):**
 ```bash
-npx prisma migrate deploy
+npm run prisma:deploy
 ```
 
 **Reset database:**
 ```bash
-npx prisma migrate reset
+npm run prisma:reset
+# ⚠️ WARNING: This will delete all data!
 ```
 
 **Open Prisma Studio (GUI):**
 ```bash
-npx prisma studio
+npm run prisma:studio
+```
+Buka browser di `http://localhost:5555`
+
+**Seed database:**
+```bash
+npm run prisma:seed
 ```
 
 **Format schema:**
@@ -163,48 +388,87 @@ npx prisma studio
 npx prisma format
 ```
 
-### Database Models
-
-#### User Model
-- `id` - Auto increment primary key
-- `email` - Unique, required
-- `name` - Optional
-- `password` - Required (hash in production!)
-- `role` - Default: "user"
-- `isActive` - Default: true (for soft delete)
-- `posts` - Relation to Post model
-- `createdAt` - Auto timestamp
-- `updatedAt` - Auto timestamp
-
-#### Post Model
-- `id` - Auto increment primary key
-- `title` - Required
-- `content` - Optional text
-- `published` - Default: false
-- `authorId` - Foreign key to User
-- `author` - Relation to User model
-- `createdAt` - Auto timestamp
-- `updatedAt` - Auto timestamp
-
 ### Adding New Models
 
 1. Edit `prisma/schema.prisma`
-2. Run `npx prisma migrate dev --name add_model_name`
+2. Run `npm run prisma:migrate`
 3. Prisma Client akan auto-update
-4. Create service di `src/services/`
-5. Create routes di `src/routes/`
-6. Register routes di `src/routes/index.js`
+4. Create service di `src/modules/`
+5. Create routes di module folder
+6. Register routes di `src/routes.js`
+
+## 📦 Prisma Structure
+
+### Seed Files
+
+Seed files terorganisir di `prisma/seed/`:
+- `index.js` - Main seeder (runs all seeds in order)
+- `permissions.seed.js` - Seed permissions
+- `roles.seed.js` - Seed roles + assign permissions
+- `user.seed.js` - Seed admin user
+
+Run individual seeder:
+```bash
+node prisma/seed/permissions.seed.js
+node prisma/seed/roles.seed.js
+node prisma/seed/user.seed.js
+```
+
+### Helper Functions
+
+RBAC helper functions tersedia di `prisma/helpers/rbac.js`:
+```javascript
+import { getUserRoles, getUserPermissions, userHasPermission } from '../prisma/helpers/rbac.js';
+
+// Get user roles with permissions
+const roles = await getUserRoles(userId);
+
+// Get all user permissions
+const permissions = await getUserPermissions(userId);
+
+// Check if user has permission
+const hasPermission = await userHasPermission(userId, 'users.create');
+```
+
+### CLI Wrapper
+
+`prisma/cli.js` adalah wrapper untuk Prisma commands yang otomatis:
+1. Memuat `prisma/database-url.js` (set DATABASE_URL)
+2. Menjalankan Prisma command
+
+Semua npm scripts menggunakan wrapper ini, jadi `DATABASE_URL` akan selalu di-set dari environment variables.
 
 ## 🔧 Configuration
 
-Konfigurasi aplikasi ada di `src/config/config.js`. Environment variables:
+### Environment Variables
 
+File `.env` berisi konfigurasi:
+
+**Database:**
+- `DB_HOST` - Database host
+- `DB_PORT` - Database port (default: 3306)
+- `DB_USER` - Database user
+- `DB_PASSWORD` - Database password
+- `DB_NAME` - Database name
+
+**JWT:**
+- `JWT_SECRET` - Secret key untuk JWT (required)
+- `JWT_EXPIRES_IN` - Token expiration (default: 7d)
+
+**Server:**
 - `NODE_ENV` - Environment (development/production)
 - `PORT` - Server port (default: 3000)
 - `HOST` - Server host (default: 0.0.0.0)
 - `LOG_LEVEL` - Log level (default: info)
 - `CORS_ORIGIN` - CORS origin (default: *)
-- `DATABASE_URL` - MySQL connection string (required)
+
+**Note:** `DATABASE_URL` dibuat otomatis oleh `prisma/database-url.js` dari `DB_*` variables.
+
+### Config Files
+
+- `src/config/env.js` - Load & validate environment variables
+- `src/config/prisma.js` - Prisma client instance
+- `prisma/database-url.js` - Build DATABASE_URL from env vars
 
 ## 📦 Packages Used
 
@@ -213,9 +477,14 @@ Konfigurasi aplikasi ada di `src/config/config.js`. Environment variables:
 - **@prisma/client** - Prisma ORM client
 - **prisma** - Prisma CLI (dev dependency)
 
+### Authentication & Security
+- **@fastify/jwt** - JWT authentication
+- **jsonwebtoken** - JWT utilities
+- **bcrypt** - Password hashing
+- **@fastify/helmet** - Security headers
+
 ### Plugins
 - **@fastify/cors** - CORS support
-- **@fastify/helmet** - Security headers
 - **@fastify/env** - Environment variables validation
 - **fastify-plugin** - Plugin helper
 - **dotenv** - Load environment variables
@@ -223,98 +492,96 @@ Konfigurasi aplikasi ada di `src/config/config.js`. Environment variables:
 ### Development
 - **nodemon** - Auto-reload during development
 - **pino-pretty** - Pretty logs for development
+- **tsx** - TypeScript execution
 
 ## 🏗️ Architecture
 
+### Module-Based Architecture
+
+Setiap feature diorganisir sebagai module di `src/modules/`:
+```
+modules/
+└── user/
+    ├── user.controller.js    # HTTP request/response handling
+    ├── user.service.js       # Business logic
+    ├── user.route.js         # Route definitions
+    ├── user.schema.js        # Request/response schemas
+    └── user.model.js         # Data models (optional)
+```
+
 ### Layered Architecture
 
-1. **Routes Layer** (`src/routes/`)
+1. **Routes Layer** (`src/modules/*/route.js`)
    - Handle HTTP requests/responses
    - Validation
-   - Call services
+   - Call controllers
 
-2. **Services Layer** (`src/services/`)
+2. **Controller Layer** (`src/modules/*/controller.js`)
+   - Request/response handling
+   - Call services
+   - Error handling
+
+3. **Service Layer** (`src/modules/*/service.js`)
    - Business logic
    - Data transformation
    - Call Prisma models
 
-3. **Database Layer** (`prisma/`)
+4. **Database Layer** (`prisma/`)
    - Schema definition
    - Migrations
    - Prisma Client
 
+### Middleware System
+
+**Authentication Middleware:**
+- `src/middleware/auth.middleware.js` - JWT verification
+
+**Authorization Middleware:**
+- `src/middleware/rbac.middleware.js` - Permission/role checking
+
 ### Plugin System
 
 Plugins registered in `src/plugins/index.js`:
-1. **Prisma Plugin** - Database connection (registered first)
-2. **CORS Plugin** - Cross-origin requests
-3. **Helmet Plugin** - Security headers
-4. **Custom Plugins** - Your custom functionality
-
-Access Prisma in routes/services:
-```javascript
-// Via fastify instance (in routes)
-fastify.prisma.user.findMany()
-
-// Via imported client (in services)
-import { prisma } from '../config/database.js';
-prisma.user.findMany()
-```
-
-## 🔐 Adding Authentication
-
-1. Install JWT package:
-```bash
-npm install @fastify/jwt bcrypt
-```
-
-2. Uncomment JWT config di `src/config/config.js`
-
-3. Register JWT plugin di `src/plugins/index.js`:
-```javascript
-import jwt from '@fastify/jwt';
-
-await fastify.register(jwt, {
-  secret: config.JWT_SECRET
-});
-```
-
-4. Update `src/middlewares/auth.middleware.js`
-
-5. Use middleware di routes:
-```javascript
-fastify.get('/protected', {
-  preHandler: [authMiddleware]
-}, async (request, reply) => {
-  return { user: request.user };
-});
-```
-
-## 🧪 Testing
-
-Tambahkan testing dengan:
-```bash
-npm install --save-dev tap @tapjs/typescript
-```
-
-Buat test files di folder `test/`
+1. **CORS Plugin** - Cross-origin requests
+2. **Helmet Plugin** - Security headers
+3. **JWT Plugin** - JWT authentication
+4. **Swagger Plugin** - API documentation
 
 ## 🚀 Deployment
 
 ### Build untuk Production
 
-1. Set environment variables di production server
-2. Run migrations:
+1. Set environment variables di production server:
+```env
+NODE_ENV=production
+DB_HOST=your_production_host
+DB_USER=your_production_user
+DB_PASSWORD=your_production_password
+DB_NAME=your_production_database
+JWT_SECRET=your_production_secret_key
+```
+
+2. Install dependencies:
 ```bash
-npx prisma migrate deploy
+npm ci --only=production
 ```
 
 3. Generate Prisma Client:
 ```bash
-npx prisma generate
+npm run prisma:generate
 ```
 
-4. Start server:
+4. Run migrations:
+```bash
+npm run prisma:deploy
+```
+
+5. Seed database (optional):
+```bash
+npm run prisma:seed
+```
+
+6. Start server:
 ```bash
 NODE_ENV=production npm start
 ```
@@ -328,17 +595,32 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 COPY . .
-RUN npx prisma generate
+RUN npm run prisma:generate
 EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
-## 📊 Prisma Studio
+## 📊 Database Management
+
+### Manual Migrations
+
+Anda juga bisa menjalankan migration manual dengan SQL:
+
+```bash
+# Menggunakan script
+cd prisma/migrations
+./run-migration.sh 20250119_init
+
+# Atau langsung MySQL
+mysql -h HOST -u USER -p DATABASE < prisma/migrations/20250119_init/migration.sql
+```
+
+### Prisma Studio
 
 Prisma menyediakan GUI untuk manage database:
 
 ```bash
-npx prisma studio
+npm run prisma:studio
 ```
 
 Buka browser di `http://localhost:5555`
@@ -347,7 +629,7 @@ Buka browser di `http://localhost:5555`
 
 ### Enable Query Logging
 
-Edit `src/config/database.js` untuk enable query logs:
+Edit `src/config/prisma.js` untuk enable query logs:
 ```javascript
 const prisma = new PrismaClient({
   log: ['query', 'info', 'warn', 'error'],
@@ -356,14 +638,15 @@ const prisma = new PrismaClient({
 
 ### Development Tips
 
-1. Gunakan `npx prisma studio` untuk inspect data
-2. Check logs dengan LOG_LEVEL=debug
+1. Gunakan `npm run prisma:studio` untuk inspect data
+2. Check logs dengan `LOG_LEVEL=debug`
 3. Gunakan Prisma's error codes untuk handling
-4. Always run `npx prisma generate` after schema changes
+4. Always run `npm run prisma:generate` after schema changes
+5. Test API dengan Postman collection di `postman/`
 
 ## 📚 Best Practices
 
-1. **Separation of Concerns** - Routes → Services → Prisma
+1. **Separation of Concerns** - Routes → Controllers → Services → Prisma
 2. **Type Safety** - Leverage Prisma's generated types
 3. **Migrations** - Always create migrations for schema changes
 4. **Transactions** - Use Prisma transactions for related operations
@@ -371,20 +654,43 @@ const prisma = new PrismaClient({
 6. **Indexes** - Add indexes for frequently queried fields
 7. **Soft Delete** - Use `isActive` flag instead of hard delete
 8. **Pagination** - Always paginate list endpoints
+9. **Validation** - Validate all inputs using schemas
+10. **RBAC** - Always check permissions before sensitive operations
 
 ## 🐛 Common Issues
 
 ### Issue: "Can't reach database server"
-**Solution:** Check DATABASE_URL and MySQL server status
+**Solution:** 
+- Check `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` in `.env`
+- Verify MySQL server is running
+- Check network connectivity
 
 ### Issue: "Prisma Client is not generated"
-**Solution:** Run `npx prisma generate`
+**Solution:** Run `npm run prisma:generate`
 
 ### Issue: "Migration failed"
-**Solution:** Check schema syntax, run `npx prisma validate`
+**Solution:** 
+- Check schema syntax, run `npx prisma validate`
+- Ensure database exists
+- Check user permissions
 
 ### Issue: "Environment variable not found"
-**Solution:** Make sure .env file exists and is loaded
+**Solution:** 
+- Make sure `.env` file exists
+- Check variable names match (DB_HOST, not DATABASE_HOST)
+- Verify `prisma/database-url.js` is loading correctly
+
+### Issue: "JWT token invalid"
+**Solution:** 
+- Check `JWT_SECRET` is set in `.env`
+- Verify token is sent in `Authorization: Bearer <token>` header
+- Check token hasn't expired
+
+### Issue: "Permission denied"
+**Solution:** 
+- Check user has required role/permission
+- Verify RBAC middleware is correctly applied
+- Check permission name format: `resource.action`
 
 ## 📄 License
 
@@ -396,13 +702,32 @@ Silakan berkontribusi untuk improve struktur ini!
 
 ---
 
-## 🎯 Next Steps
+## 🎯 Features
 
-- [ ] Implement authentication with JWT
+- ✅ JWT Authentication
+- ✅ RBAC (Role-Based Access Control)
+- ✅ User Management
+- ✅ Role Management
+- ✅ Permission Management
+- ✅ Multi-Role per User
+- ✅ Password Hashing (bcrypt)
+- ✅ Soft Delete Support
+- ✅ Pagination Support
+- ✅ API Documentation (Swagger)
+- ✅ CORS Support
+- ✅ Security Headers (Helmet)
+- ✅ Environment-based Configuration
+- ✅ Database Seeding
+- ✅ Migration Management
+
+## 🔄 Next Steps
+
 - [ ] Add input validation (Zod/Joi)
 - [ ] Add unit & integration tests
 - [ ] Setup CI/CD pipeline
-- [ ] Add API documentation (Swagger)
-- [ ] Implement rate limiting
+- [ ] Add rate limiting
 - [ ] Add caching layer (Redis)
-- [ ] Setup monitoring & logging
+- [ ] Setup monitoring & logging (Sentry, Datadog)
+- [ ] Add file upload support
+- [ ] Add email service
+- [ ] Add websocket support
