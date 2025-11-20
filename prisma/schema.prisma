@@ -1,0 +1,99 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+
+  url = env("DATABASE_URL")
+}
+
+// User Model
+model User {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  email     String   @unique
+  name      String?
+  password  String // Hashed password
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userRoles UserRole[]
+
+  @@index([email])
+  @@map("users")
+}
+
+// Permission Model
+model Permission {
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  name        String   @unique // e.g., "users.create", "posts.delete"
+  description String?
+  resource    String // e.g., "users", "posts", "roles"
+  action      String // e.g., "create", "read", "update", "delete"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@index([action])
+  @@map("permissions")
+}
+
+// Role Model
+model Role {
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  name        String   @unique // e.g., "admin", "editor", "viewer"
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@index([name])
+  @@map("roles")
+}
+
+// User-Role Junction Table (Many-to-Many)
+model UserRole {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  userId    String   @db.VarChar(36)
+  roleId    String   @db.VarChar(36)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+// Role-Permission Junction Table (Many-to-Many)
+model RolePermission {
+  id           String   @id @default(uuid()) @db.VarChar(36)
+  roleId       String   @db.VarChar(36)
+  permissionId String   @db.VarChar(36)
+  createdAt    DateTime @default(now())
+
+  // Relations
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}

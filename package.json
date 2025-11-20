@@ -1,0 +1,46 @@
+{
+  "name": "basefastify",
+  "version": "1.0.0",
+  "description": "Base Fastify Backend Structure",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prisma:generate": "node prisma/cli.js generate",
+    "prisma:migrate": "node prisma/cli.js migrate dev",
+    "prisma:studio": "node prisma/cli.js studio",
+    "prisma:deploy": "node prisma/cli.js migrate deploy",
+    "prisma:reset": "node prisma/cli.js migrate reset",
+    "prisma:seed": "node prisma/cli.js db seed"
+  },
+  "prisma": {
+    "seed": "node prisma/seed/index.js"
+  },
+  "keywords": [
+    "fastify",
+    "backend",
+    "nodejs",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@fastify/env": "^5.0.3",
+    "@fastify/helmet": "^13.0.2",
+    "@prisma/client": "^6.19.0",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.2.3",
+    "fastify": "^5.6.2",
+    "fastify-plugin": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pino-pretty": "^13.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11",
+    "prisma": "^6.19.0",
+    "tsx": "^4.7.0"
+  }
+}
