@@ -36,7 +36,6 @@
 
 Anda sudah set DATABASE_URL ke remote server ✅
 ```env
-DATABASE_URL="mysql://root:P@ssw0rd!*#@128.199.138.215:3306/base_fastify"
 ```
 
 ## Run Migration
